@@ -30,7 +30,7 @@ To generate a model:
 
 1. Run `patterns.csx` in a folder containing pattern files in ABL3 format, producing a single file `input_patterns.txt` 
 which contains all patterns in a condensed format suitable for training.
-2. Use the `TrainCharLm()` method from `model.csx` to generate a model and write it to file as JSON:
+2. Use the `TrainCharLm()` method from `model.csx` to generate a model and write it to a file as JSON:
 ```C#
 // dotnet script .\model.csx -i
 var lm = TrainCharLm("input_patterns.txt", 18);
