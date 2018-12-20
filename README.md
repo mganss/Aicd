@@ -2,6 +2,8 @@
 
 An acid pattern MIDI generator Max for Live device based on a maximum likelihood n-gram model.
 
+![Aicd screenshot](https://github.com/mganss/Aicd/raw/master/screenshot.png)
+
 ## Features
 
 - Generate variable length patterns (1-64 steps)
