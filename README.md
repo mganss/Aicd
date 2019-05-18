@@ -6,6 +6,8 @@ An acid pattern MIDI generator Max for Live device based on a maximum likelihood
 
 [Demo on YouTube](https://youtu.be/y58dpdHuVms)
 
+Download under [releases](https://github.com/mganss/Aicd/releases) or at [maxforlive.com](http://maxforlive.com/library/device/5158/aicd)
+
 ## Features
 
 - Generate variable length patterns (1-64 steps)
