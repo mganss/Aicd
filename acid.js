@@ -105,3 +105,93 @@ function setVelocity(v) {
 function setPatternLength(p) {
     patternLength = p;
 }
+
+var fixGate = false;
+
+function setFixGate(v) {
+    fixGate = v === 1;
+}
+
+function Note(pitch, start, duration, velocity, muted) {
+    this.Pitch = pitch;
+    this.Start = start;
+    this.Duration = duration;
+    this.Velocity = velocity;
+}
+
+var liveSteps = [];
+var liveStepsLen = 0;
+
+function dumpStep(s, i, pitch, velocity, l, slide, gate) {
+    if (gate === undefined) return;
+    liveSteps[i - 1] = {
+        pitch: pitch,
+        velocity: velocity,
+        slide: slide,
+        gate: gate
+    };
+    liveStepsLen = i;
+}
+
+function generateMidi() {
+    var notes = [];
+    var i;
+    var previousNote = null;
+
+    for (i = 0; i < liveStepsLen; i++) {
+        var step = liveSteps[i];
+        var previousStep = i > 0 ? liveSteps[i - 1] : null;
+        if (!fixGate && step.gate === 0) continue;
+        if (previousStep !== null && previousStep.pitch === step.pitch && previousStep.slide === 1 && (fixGate || previousStep.gate === 1)) {
+            // slide and same pitch as previous step -> extend duration of previous note
+            if (step.slide === 1)
+                previousNote.Duration += 0.25;
+        } else {
+            var note = new Note(step.pitch, i / 4.0, step.slide === 1 ? 0.375 : 0.125, step.velocity);
+            notes.push(note);
+            previousNote = note;
+        }
+    }
+
+    return notes;
+}
+
+function clip() {
+    var track = new LiveAPI("this_device canonical_parent");
+    var clipSlots = track.getcount("clip_slots");
+    var clipSlot;
+
+    var firstClip = null;
+
+    for (var clipSlotNum = 0; clipSlotNum < clipSlots; clipSlotNum++) {
+        clipSlot = new LiveAPI("this_device canonical_parent clip_slots " + clipSlotNum);
+        var hasClip = clipSlot.get("has_clip").toString() !== "0";
+        if (!hasClip) break;
+    }
+
+    if (clipSlotNum === clipSlots) {
+        // have to create new clip slot (scene)
+        var set = new LiveAPI("live_set");
+        set.call("create_scene", -1);
+        clipSlot = new LiveAPI("this_device canonical_parent clip_slots " + clipSlotNum);
+    }
+
+    var beats = Math.ceil(patternLength / 4);
+    clipSlot.call("create_clip", beats);
+    var clip = new LiveAPI("this_device canonical_parent clip_slots " + clipSlotNum + " clip");
+    var notes = generateMidi();
+
+    setNotes(clip, notes);
+}
+
+function setNotes(clip, notes) {
+    clip.call("set_notes");
+    clip.call("notes", notes.length);
+
+    for (var i = 0; i < notes.length; i++) {
+        var note = notes[i];
+        clip.call("note", note.Pitch, note.Start.toFixed(4), note.Duration.toFixed(4), note.Velocity, note.Muted);
+    }
+
+    clip.call("done");
+}
