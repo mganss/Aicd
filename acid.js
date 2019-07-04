@@ -85,6 +85,7 @@ function sendCurrentSteps() {
         var step = currentSteps[s];
         outlet(0, "step", s + 1, step.note, step.accent ? 127 : velocity, 120, step.slide, step.gate);
     }
+    clipOut();
 }
 
 function bang() {
@@ -104,12 +105,14 @@ function setVelocity(v) {
 
 function setPatternLength(p) {
     patternLength = p;
+    clipOut();
 }
 
 var fixGate = false;
 
 function setFixGate(v) {
     fixGate = v === 1;
+    clipOut();
 }
 
 function Note(pitch, start, duration, velocity, muted) {
@@ -123,14 +126,18 @@ var liveSteps = [];
 var liveStepsLen = 0;
 
 function dumpStep(s, i, pitch, velocity, l, slide, gate) {
-    if (gate === undefined) return;
-    liveSteps[i - 1] = {
-        pitch: pitch,
-        velocity: velocity,
-        slide: slide,
-        gate: gate
-    };
-    liveStepsLen = i;
+    if (s === "changed") {
+        clipOut();
+    } else {
+        if (gate === undefined) return;
+        liveSteps[i - 1] = {
+            pitch: pitch,
+            velocity: velocity,
+            slide: slide,
+            gate: gate
+        };
+        liveStepsLen = i;
+    }
 }
 
 function generateMidi() {
@@ -194,4 +201,73 @@ function setNotes(clip, notes) {
     }
 
     clip.call("done");
+}
+
+var clips = {
+    out: null
+};
+var ids = {
+    out: 0
+};
+var init = false;
+
+function liveInit() {
+    init = true;
+    if (ids.out !== 0) {
+        setOut(ids.out);
+    }
+}
+
+function setClip(name, id) {
+    if (!init) {
+        ids[name] = id;
+        return;
+    }
+    if (id === 0) {
+        clips[name] = null;
+        return;
+    }
+    var clipId = "id " + id;
+    clips[name] = new LiveAPI(clipId);
+}
+
+function setOut(id) {
+    setClip("out", id);
+    clipOut();
+}
+
+function clipOut() {
+    if (clips.out !== null) {
+        var outClip = clips.out;
+        callPatternStepDump();
+        var stepNotes = generateMidi();
+        if (stepNotes === undefined) stepNotes = [];
+        replaceAllNotes(outClip, stepNotes);
+    }
+}
+
+function replaceAllNotes(clip, notes) {
+    clip.call("select_all_notes");
+    clip.call("replace_selected_notes");
+    clip.call("notes", notes.length);
+
+    for (var i = 0; i < notes.length; i++) {
+        var note = notes[i];
+        callNote(clip, note);
+    }
+
+    clip.call("done");
+}
+
+function callNote(clip, note) {
+    clip.call("note", note.Pitch, note.Start.toFixed(4), note.Duration.toFixed(4), note.Velocity, note.Muted);
+}
+
+function callPatternStepDump() {
+    var patternStep = this.patcher.getnamed("patternStep");
+    patternStep.message("dump");
+}
+
+function recallPreset() {
+    clipOut();
 }
