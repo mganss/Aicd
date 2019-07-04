@@ -16,6 +16,8 @@ Download under [releases](https://github.com/mganss/Aicd/releases) or at [maxfor
 - Choose velocity of unaccented steps (default 99, accented steps are always 127)
 - Fold/zoom sequencer view
 - View/edit pitch, velocity, slide, gate independently
+- Create clip
+- Set permanently updated output clip
 
 ## Usage
 
