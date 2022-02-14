@@ -8,6 +8,7 @@ var temperature = 1.0;
 var velocity = 100;
 var patternLength = 16;
 var currentSteps = [];
+var majorVersion;
 
 function setInitialized(v) {
     if (v === 0) {
@@ -192,15 +193,37 @@ function clip() {
 }
 
 function setNotes(clip, notes) {
-    clip.call("set_notes");
-    clip.call("notes", notes.length);
+    if (majorVersion <= 10) {
+        clip.call("set_notes");
+        clip.call("notes", notes.length);
+    
+        for (var i = 0; i < notes.length; i++) {
+            var note = notes[i];
+            clip.call("note", note.Pitch, note.Start.toFixed(4), note.Duration.toFixed(4), note.Velocity, note.Muted);
+        }
+    
+        clip.call("done");
+    } else {
+        var noteSpecifications = [];
 
-    for (var i = 0; i < notes.length; i++) {
-        var note = notes[i];
-        clip.call("note", note.Pitch, note.Start.toFixed(4), note.Duration.toFixed(4), note.Velocity, note.Muted);
+        for (var i = 0; i < notes.length; i++) {
+            var note = notes[i];
+            var noteSpecification = {
+                pitch: note.Pitch,
+                start_time: note.Start,
+                duration: note.Duration,
+                velocity: note.Velocity,
+                mute: note.Muted
+            };
+            noteSpecifications.push(noteSpecification);
+        }
+
+        var notesToAdd = {
+            notes: noteSpecifications
+        };
+
+        clip.call("add_new_notes", notesToAdd);
     }
-
-    clip.call("done");
 }
 
 var clips = {
@@ -212,6 +235,7 @@ var ids = {
 var init = false;
 
 function liveInit() {
+    majorVersion = new LiveAPI("live_app").call("get_major_version");
     init = true;
     if (ids.out !== 0) {
         setOut(ids.out);
@@ -247,16 +271,21 @@ function clipOut() {
 }
 
 function replaceAllNotes(clip, notes) {
-    clip.call("select_all_notes");
-    clip.call("replace_selected_notes");
-    clip.call("notes", notes.length);
-
-    for (var i = 0; i < notes.length; i++) {
-        var note = notes[i];
-        callNote(clip, note);
+    if (majorVersion <= 10) {
+        clip.call("select_all_notes");
+        clip.call("replace_selected_notes");
+        clip.call("notes", notes.length);
+    
+        for (var i = 0; i < notes.length; i++) {
+            var note = notes[i];
+            callNote(clip, note);
+        }
+    
+        clip.call("done");
+    } else {
+        clip.call("remove_notes_extended", 0, 127, 0, 4294967295);
+        setNotes(clip, notes);
     }
-
-    clip.call("done");
 }
 
 function callNote(clip, note) {
