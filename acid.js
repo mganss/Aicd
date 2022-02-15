@@ -164,15 +164,28 @@ function generateMidi() {
     return notes;
 }
 
+function getTrackPath() {
+    var path = "this_device canonical_parent";
+    var parent = new LiveAPI(path);
+    
+    while (parent.type !== "Track") {
+        path = path + " canonical_parent";
+        parent = new LiveAPI(path);
+    } 
+
+    return path;
+}
+
 function clip() {
-    var track = new LiveAPI("this_device canonical_parent");
+    var trackPath = getTrackPath();
+    var track = new LiveAPI(trackPath);
     var clipSlots = track.getcount("clip_slots");
     var clipSlot;
 
     var firstClip = null;
 
     for (var clipSlotNum = 0; clipSlotNum < clipSlots; clipSlotNum++) {
-        clipSlot = new LiveAPI("this_device canonical_parent clip_slots " + clipSlotNum);
+        clipSlot = new LiveAPI(trackPath + " clip_slots " + clipSlotNum);
         var hasClip = clipSlot.get("has_clip").toString() !== "0";
         if (!hasClip) break;
     }
@@ -181,12 +194,12 @@ function clip() {
         // have to create new clip slot (scene)
         var set = new LiveAPI("live_set");
         set.call("create_scene", -1);
-        clipSlot = new LiveAPI("this_device canonical_parent clip_slots " + clipSlotNum);
+        clipSlot = new LiveAPI(trackPath + " clip_slots " + clipSlotNum);
     }
 
     var beats = Math.ceil(patternLength / 4);
     clipSlot.call("create_clip", beats);
-    var clip = new LiveAPI("this_device canonical_parent clip_slots " + clipSlotNum + " clip");
+    var clip = new LiveAPI(trackPath + " clip_slots " + clipSlotNum + " clip");
     var notes = generateMidi();
 
     setNotes(clip, notes);
